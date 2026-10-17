@@ -17,11 +17,10 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Repository = "https://github.com/your-account/comfyui_workflow_sync"
-Issues = "https://github.com/your-account/comfyui_workflow_sync/issues"
-Documentation = "https://github.com/your-account/comfyui_workflow_sync#readme"
+Repository = "https://github.com/CubeEarthWorld/comfyui_workflow_sync"
+Issues = "https://github.com/CubeEarthWorld/comfyui_workflow_sync/issues"
+Documentation = "https://github.com/CubeEarthWorld/comfyui_workflow_sync#readme"
 
 [tool.comfy]
-PublisherId = "your-publisher-id"
+PublisherId = "cubeearthworld"
 DisplayName = "Workflow Sync (LLM x ComfyUI)"
-Icon = "https://raw.githubusercontent.com/your-account/comfyui_workflow_sync/main/assets/icon.png"

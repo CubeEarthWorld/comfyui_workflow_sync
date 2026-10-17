@@ -50,7 +50,7 @@ real time, and both sides can press **Run**.
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/your-account/comfyui_workflow_sync
+git clone https://github.com/CubeEarthWorld/comfyui_workflow_sync
 ```
 
 ### Manual (copy)
@@ -235,7 +235,7 @@ ComfyUI 拡張です。LLM が共有ファイルを読み書きし、拡張が�
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/your-account/comfyui_workflow_sync
+git clone https://github.com/CubeEarthWorld/comfyui_workflow_sync
 ```
 
 ### 手動（コピー）
