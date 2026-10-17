@@ -1,0 +1,19 @@
+# ComfyUI / Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env.local
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Local collaboration data and generated artifacts
+Workflow collaboration.*.json
+*.log
+dist/
+*.zip

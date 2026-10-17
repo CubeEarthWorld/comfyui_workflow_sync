@@ -1,0 +1,27 @@
+[project]
+name = "comfyui-workflow-sync"
+version = "1.0.0"
+description = "Collaborate on a single ComfyUI workflow with an LLM agent through the official Comfy MCP: shared UI/API files, live screen sync and conflict handling."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{ name = "Workflow Sync contributors" }]
+keywords = ["comfyui", "mcp", "llm", "agent", "collaboration", "workflow", "sync"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: JavaScript",
+  "Topic :: Multimedia :: Graphics",
+]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/your-account/comfyui_workflow_sync"
+Issues = "https://github.com/your-account/comfyui_workflow_sync/issues"
+Documentation = "https://github.com/your-account/comfyui_workflow_sync#readme"
+
+[tool.comfy]
+PublisherId = "your-publisher-id"
+DisplayName = "Workflow Sync (LLM x ComfyUI)"
+Icon = "https://raw.githubusercontent.com/your-account/comfyui_workflow_sync/main/assets/icon.png"

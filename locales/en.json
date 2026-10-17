@@ -1,0 +1,22 @@
+{
+  "language": "en",
+  "messages": {
+    "settingSync": "Sync the workflow with the LLM",
+    "settingAutoOpen": "Auto-open the workflow the LLM edited",
+    "settingResolve": "On sync conflict",
+    "syncName": "Workflow sync",
+    "errLoad": "Could not load the workflow. The shared data was not overwritten.",
+    "errMismatch": "The loaded graph does not match. The shared data was not overwritten.",
+    "errBusy": "Another ComfyUI screen is editing. Close it and this screen can sync; your edits are kept.",
+    "errGenFailed": "Generation failed. See the job history for details.",
+    "errNoRestore": "There is no workflow to restore.",
+    "okOpened": "Opened the LLM workflow",
+    "okOpenedDetail": "The workflow the LLM edited was applied to this screen."
+  },
+  "resolve": {
+    "ask": "Ask me",
+    "keep": "Keep my edits",
+    "load": "Load the LLM changes",
+    "restore": "Restore before sync"
+  }
+}

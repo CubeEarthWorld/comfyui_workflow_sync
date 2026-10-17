@@ -1,0 +1,22 @@
+{
+  "language": "ko",
+  "messages": {
+    "settingSync": "LLM과 워크플로 동기화",
+    "settingAutoOpen": "LLM이 편집한 워크플로 자동 열기",
+    "settingResolve": "동기화 충돌 시 동작",
+    "syncName": "워크플로 동기화",
+    "errLoad": "워크플로를 불러오지 못했습니다. 공유 데이터는 덮어쓰지 않았습니다.",
+    "errMismatch": "불러온 그래프가 일치하지 않습니다. 공유 데이터는 덮어쓰지 않았습니다.",
+    "errBusy": "다른 ComfyUI 화면이 편집 중입니다. 닫으면 이 화면에서 동기화할 수 있습니다. 변경 내용은 유지됩니다.",
+    "errGenFailed": "생성에 실패했습니다. 작업 기록에서 자세히 확인하세요.",
+    "errNoRestore": "복원할 워크플로가 없습니다.",
+    "okOpened": "LLM 워크플로를 열었습니다",
+    "okOpenedDetail": "LLM이 편집한 워크플로를 이 화면에 반영했습니다."
+  },
+  "resolve": {
+    "ask": "선택하세요",
+    "keep": "화면 편집 채택",
+    "load": "LLM 변경 불러오기",
+    "restore": "동기화 이전 복원"
+  }
+}

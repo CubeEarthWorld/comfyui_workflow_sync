@@ -1,0 +1,22 @@
+{
+  "language": "zh",
+  "messages": {
+    "settingSync": "与 LLM 同步工作流",
+    "settingAutoOpen": "自动打开 LLM 编辑的工作流",
+    "settingResolve": "同步冲突时的操作",
+    "syncName": "工作流同步",
+    "errLoad": "无法加载工作流。未覆盖共享数据。",
+    "errMismatch": "加载后的图不一致。未覆盖共享数据。",
+    "errBusy": "另一个 ComfyUI 画面正在编辑。关闭它后本画面即可同步；你的修改会保留。",
+    "errGenFailed": "生成失败。请在任务历史中查看详情。",
+    "errNoRestore": "没有可恢复的工作流。",
+    "okOpened": "已打开 LLM 的工作流",
+    "okOpenedDetail": "已将 LLM 编辑的工作流应用到本画面。"
+  },
+  "resolve": {
+    "ask": "请选择",
+    "keep": "采用画面编辑",
+    "load": "载入 LLM 的更改",
+    "restore": "恢复同步前画面"
+  }
+}

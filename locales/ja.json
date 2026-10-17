@@ -1,0 +1,22 @@
+{
+  "language": "ja",
+  "messages": {
+    "settingSync": "LLMとのワークフロー同期",
+    "settingAutoOpen": "LLMが操作したワークフローを自動で開く",
+    "settingResolve": "同期が競合したときの操作",
+    "syncName": "ワークフローの同期",
+    "errLoad": "ワークフローを読み込めませんでした。共有データは上書きしていません。",
+    "errMismatch": "読み込み後のグラフが一致しません。共有データは上書きしていません。",
+    "errBusy": "別のComfyUI画面が編集中です。そちらを閉じるとこの画面から同期できます。変更内容は保持しています。",
+    "errGenFailed": "生成に失敗しました。ジョブ履歴で詳細を確認できます。",
+    "errNoRestore": "復元できるワークフローがありません",
+    "okOpened": "LLMのワークフローを開きました",
+    "okOpenedDetail": "操作したワークフローをこの画面に反映しました。"
+  },
+  "resolve": {
+    "ask": "選択してください",
+    "keep": "画面の編集を採用",
+    "load": "LLMの変更を読み込む",
+    "restore": "同期前の画面を復元"
+  }
+}
