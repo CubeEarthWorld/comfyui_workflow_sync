@@ -1,4 +1,4 @@
-"""Run with python test_auto_open.py; no ComfyUI server or generation needed."""
+"""Run with python tests/test_auto_open.py; no ComfyUI server or generation needed."""
 import ast
 import copy
 import hashlib
@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import uuid
 
 
-source = ast.parse(Path(__file__).with_name('__init__.py').read_text(encoding='utf8'))
+source = ast.parse((Path(__file__).resolve().parents[1] / '__init__.py').read_text(encoding='utf8'))
 functions = ast.Module(body=[item for item in source.body if isinstance(item, ast.FunctionDef)], type_ignores=[])
 scope = dict(globals())
 exec(compile(functions, '__init__.py', 'exec'), scope)

@@ -98,9 +98,10 @@ function resolveKey(value) {
 /* ------------------------------------------------------------------ *
  * State
  * ------------------------------------------------------------------ */
-let revision = -1, baseline = '', busy = false, loading = false, booted = false;
+let revision = -1, baseline = '', busy = false, booted = false;
 let enabled = true, blocked = false, lastError = '', forcePublish = false;
 let autoOpen = true, openRequest = null, resolveMode = 'load';
+let pendingResolve = null;
 const mirrored = new Map();
 
 function fingerprint(workflow) {
@@ -125,6 +126,9 @@ async function lease(editing = false) {
   return api.clientId && (await request('lease', {client_id: api.clientId, revision, editing, protocol: 1, auto_open: autoOpen})).ready;
 }
 async function load(workflow) {
+  // Invalidate publication before the loader can mutate the canvas.
+  revision = -1;
+  forcePublish = false;
   if (Array.isArray(workflow.nodes)) {
     const active = app.extensionManager.workflow.activeWorkflow;
     const applied = await app.loadGraphData(workflow, true, true, active);
@@ -133,7 +137,9 @@ async function load(workflow) {
     const actual = app.graph.serialize().nodes.map(node => String(node.id)).sort();
     if (JSON.stringify(expected) !== JSON.stringify(actual))
       throw new Error(M.errMismatch);
-  } else await app.loadApiJson(workflow, 'Workflow collaboration.json');
+  } else if (await app.loadApiJson(workflow, 'Workflow collaboration.json') === false) {
+    throw new Error(M.errLoad);
+  }
 }
 function seedControls(output, mode) {
   const seed_modes = {}, seed_widgets = {}, stack = [[app.graph, []]], seen = new Set();
@@ -184,46 +190,40 @@ async function publish(pair, mode = 'saved') {
  * the user; `load` takes the LLM graph, `keep` republishes this screen, and
  * `restore` brings back the graph from before the first sync. */
 async function applyResolve(value) {
-  const key = resolveKey(value);
-  resolveMode = key;
-  if (key === 'ask' || busy) return;
-  try {
-    if (key === 'keep' || key === 'restore') {
-      if (key === 'restore') {
-        const saved = localStorage.getItem('ComfyCollaboration.beforeSync');
-        if (!saved) throw new Error(M.errNoRestore);
-        loading = true; try {await load(JSON.parse(saved));} finally {loading = false;}
-      }
-      revision = (await request('state')).revision;
-      forcePublish = true;
-    } else {
-      localStorage.setItem('ComfyCollaboration.beforeSync', JSON.stringify(app.graph.serialize()));
-      revision = -1;
-    }
-    blocked = false; await sync();
-  } catch (error) {warn(error);}
+  resolveMode = resolveKey(value);
+  pendingResolve = booted && resolveMode !== 'ask' ? resolveMode : null;
+  await sync();
 }
 async function sync() {
   if (!enabled || !booted || busy || !app.graph) return;
   busy = true;
   try {
-    if (blocked) {
+    if (blocked || pendingResolve) {
       const remote = await request('state');
       const local = await app.graphToPrompt();
-      // A native Save can resolve the conflict through the named-file watcher.
-      // Resume automatically only when no local edits would be discarded.
-      if (!remote.workflow || fingerprint(remote.workflow) !== fingerprint(local.workflow)) {
-        if (resolveMode === 'load') {
-          localStorage.setItem('ComfyCollaboration.beforeSync', JSON.stringify(app.graph.serialize()));
-          revision = -1; blocked = false;
+      const resolution = pendingResolve || resolveMode;
+      // A native Save can resolve matching graphs without applying a conflict policy.
+      if (pendingResolve || !remote.workflow || fingerprint(remote.workflow) !== fingerprint(local.workflow)) {
+        if (resolution === 'load') {
+          revision = -1;
+          forcePublish = false;
+        } else if (resolution === 'keep' || resolution === 'restore') {
+          if (resolution === 'restore') {
+            const saved = sessionStorage.getItem('ComfyCollaboration.beforeSync');
+            if (!saved) throw new Error(M.errNoRestore);
+            await load(JSON.parse(saved));
+          }
+          revision = remote.revision;
+          forcePublish = true;
         } else {
           return;
         }
       } else {
         revision = remote.revision;
         baseline = fingerprint(local.workflow);
-        blocked = false;
       }
+      blocked = false;
+      pendingResolve = null;
     }
     const writable = await lease();
     const pair = revision >= 0 ? await app.graphToPrompt() : null;
@@ -237,8 +237,8 @@ async function sync() {
     } else {
       const remote = await request('state?revision=' + revision);
       if (remote.revision !== revision) {
-        if (revision < 0) localStorage.setItem('ComfyCollaboration.beforeSync', JSON.stringify(app.graph.serialize()));
-        loading = true;
+        if (!sessionStorage.getItem('ComfyCollaboration.beforeSync'))
+          sessionStorage.setItem('ComfyCollaboration.beforeSync', JSON.stringify(app.graph.serialize()));
         try {
           if (remote.workflow || remote.output) await load(remote.workflow || remote.output);
           revision = remote.revision;
@@ -252,7 +252,12 @@ async function sync() {
             app.extensionManager.toast.add({severity: 'info', summary: M.okOpened, detail: M.okOpenedDetail, life: 5000});
           }
           openRequest = remote.open_request;
-        } finally {loading = false;}
+        } catch (error) {
+          // A failed load/export must be retried before this canvas can be published.
+          revision = -1;
+          forcePublish = false;
+          throw error;
+        }
       }
     }
     await lease();

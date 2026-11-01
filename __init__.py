@@ -52,12 +52,20 @@ def signature(path):
     if not path.exists():
         return None, None
     raw = path.read_bytes()
-    return hashlib.sha256(raw).hexdigest(), json.loads(raw)
+    data = json.loads(raw)
+    if data is not None:
+        if path == FILES['workflow'] and (not isinstance(data, dict) or not isinstance(data.get('nodes'), list)):
+            raise ValueError('Native UI workflow required')
+        if path == FILES['output'] and (not isinstance(data, dict) or any(
+                not isinstance(node, dict) or not isinstance(node.get('inputs'), dict) or
+                not isinstance(node.get('class_type'), str) for node in data.values())):
+            raise ValueError('Invalid API workflow')
+    return hashlib.sha256(raw).hexdigest(), data
 
 
 def save_meta():
     atomic_json(META, {key: value for key, value in STATE.items() if key not in FILES} |
-                {'ui_current': STATE['workflow'] is not None})
+                {'ui_current': STATE['workflow'] is not None, 'file_hashes': dict(HASHES)})
 
 
 def announce():
@@ -65,8 +73,12 @@ def announce():
 
 
 def refresh_files():
+    """Import file changes, returning False while shared files are incomplete."""
     with LOCK:
-        observed = {key: signature(path) for key, path in FILES.items()}
+        try:
+            observed = {key: signature(path) for key, path in FILES.items()}
+        except (ValueError, OSError):
+            return False  # Keep the last valid state while another process finishes writing.
         changed = {}
         for key, (stamp, data) in observed.items():
             if stamp != HASHES.get(key):
@@ -96,7 +108,7 @@ def refresh_files():
                 observed['workflow'] = signature(FILES['workflow'])
                 changed['workflow'] = workflow
         if not changed:
-            return
+            return True
         if STATE['auto_open'] and any(key in changed for key in FILES) and not saved:
             STATE['open_request'] = str(uuid.uuid4())
         HASHES.update({key: stamp for key, (stamp, _) in observed.items()})
@@ -110,6 +122,7 @@ def refresh_files():
         STATE['revision'] += 1
         save_meta()
         announce()
+        return True
 
 
 def node_info(kind):
@@ -149,21 +162,21 @@ def prune(prompt, additional_roots=()):
     if not roots:
         return prompt  # Comfy's validator reports missing output nodes.
     needed = set()
-    def visit(key):
+    while roots:
+        key = roots.pop()
         if key in needed:
-            return
+            continue
         needed.add(key)
         for value in prompt[key]['inputs'].values():
             if isinstance(value, list) and len(value) == 2 and str(value[0]) in prompt:
-                visit(str(value[0]))
-    for key in roots:
-        visit(key)
+                roots.append(str(value[0]))
     return {key: value for key, value in prompt.items() if key in needed}
 
 
 def comparable(prompt):
     return {key: {'class_type': node['class_type'], 'inputs': {
-        name: value for name, value in node['inputs'].items() if name not in ('seed', 'noise_seed')}}
+        name: value for name, value in node['inputs'].items()
+        if name not in ('seed', 'noise_seed') or type(value) is not int}}
         for key, node in prompt.items()}
 
 
@@ -243,7 +256,7 @@ def actual_workflow(actual):
 
 def transform_prompt(data):
     with LOCK:
-        refresh_files()
+        files_ready = refresh_files()
         current = STATE.get('output')
         submitted = data.get('prompt')
         if not isinstance(submitted, dict):
@@ -256,15 +269,15 @@ def transform_prompt(data):
         external = data.get('client_id') != EDITOR.get('client_id') or not data.get('client_id')
         if not matching and not (external and STATE['auto_open']):
             return data
-        actual = randomize_seeds(prompt) if matching else {}
+        actual = randomize_seeds(prompt) if matching and external else {}
         pid = data.setdefault('prompt_id', str(uuid.uuid4()))
         extra = data.setdefault('extra_data', {}).setdefault('extra_pnginfo', {})
-        workflow = actual_workflow(actual) if matching else extra.get('workflow')
+        workflow = actual_workflow(actual) if matching and external else extra.get('workflow')
         if not isinstance(workflow, dict) or not isinstance(workflow.get('nodes'), list):
             workflow = None
         if workflow is not None:
             extra['workflow'] = workflow
-        if external and STATE['auto_open']:
+        if external and STATE['auto_open'] and files_ready:
             for key, value in [('workflow', workflow), ('output', prompt)]:
                 atomic_json(FILES[key], value)
                 HASHES[key] = signature(FILES[key])[0]
@@ -302,7 +315,10 @@ def public_state(full=True):
 
 
 async def body(request):
-    data = await request.json()
+    try:
+        data = await request.json()
+    except ValueError as error:
+        raise web.HTTPBadRequest(text='Valid JSON object required') from error
     if not isinstance(data, dict):
         raise web.HTTPBadRequest(text='JSON object required')
     return data
@@ -322,14 +338,14 @@ async def lease(request):
         raise web.HTTPBadRequest(text='Reload ComfyUI to update the collaboration extension')
     if not isinstance(data.get('client_id'), str) or not data['client_id']:
         raise web.HTTPBadRequest(text='Editor client id required')
+    if 'auto_open' in data and type(data['auto_open']) is not bool:
+        raise web.HTTPBadRequest(text='Auto open must be a boolean')
     with LOCK:
         ready = data['client_id'] == EDITOR.get('client_id') or time.monotonic() - EDITOR.get('seen', -100) >= 8
         if ready:
             EDITOR.update(client_id=data['client_id'], seen=time.monotonic(), editing=bool(data.get('editing')),
                           revision=data.get('revision'))
             if 'auto_open' in data:
-                if type(data['auto_open']) is not bool:
-                    raise web.HTTPBadRequest(text='Auto open must be a boolean')
                 if STATE['auto_open'] != data['auto_open']:
                     STATE['auto_open'] = data['auto_open']
                     save_meta()
@@ -340,7 +356,8 @@ async def lease(request):
 async def update_state(request):
     data = await body(request)
     with LOCK:
-        refresh_files()
+        if not refresh_files():
+            raise web.HTTPConflict(text='Workflow changed elsewhere; waiting for valid shared files')
         if data.get('client_id') != EDITOR.get('client_id') or not data.get('client_id'):
             raise web.HTTPConflict(text='Another ComfyUI editor is active; keep your edits')
         if type(data.get('revision')) is not int or data['revision'] != STATE['revision']:
@@ -420,11 +437,15 @@ def monitor():
         time.sleep(.75)
 
 
+metadata = {}
 if META.exists():
     try:
         metadata = json.loads(META.read_text(encoding='utf8'))
+        if not isinstance(metadata, dict):
+            raise ValueError('Sync metadata must be an object')
         STATE.update({key: metadata[key] for key in STATE if key in metadata})
     except (ValueError, OSError):
+        metadata = {}
         logging.warning('Cannot read collaboration metadata; recovering from workflow files')
 for key, path in FILES.items():
     try:
@@ -433,7 +454,10 @@ for key, path in FILES.items():
         logging.warning('Cannot read shared %s workflow; waiting for a valid JSON file', key)
 SAVED_HASHES.update({path: path.stat().st_mtime_ns for path in ROOT.rglob('*.json')
                      if path not in (*FILES.values(), META)})
-if META.exists() and not locals().get('metadata', {}).get('ui_current', True):
+if not metadata.get('ui_current', True):
     STATE['workflow'] = None
+if isinstance(metadata.get('file_hashes'), dict):
+    HASHES.update({key: value for key, value in metadata['file_hashes'].items() if key in FILES})
+    refresh_files()
 SERVER.add_on_prompt_handler(on_prompt)
 threading.Thread(target=monitor, daemon=True, name='ComfyNativeSync').start()

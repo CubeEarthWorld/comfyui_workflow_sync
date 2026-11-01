@@ -173,6 +173,22 @@ comfyui_workflow_sync/
   after the first stops syncing (about 8 seconds).
 - The extension does not add generation nodes, and does not modify the official
   Comfy MCP or ComfyUI source.
+- The restore snapshot belongs to the current browser tab and lasts for that
+  tab's session. Later syncs and other tabs do not replace it.
+- After this version saves sync metadata, edits to the shared files made while
+  ComfyUI is stopped are detected on restart. A changed UI file invalidates the
+  old API file until a connected screen exports the updated graph.
+
+## Tests
+
+Python 3.10+ and Node.js 18+ are required. The backend tests use `aiohttp`, which
+ComfyUI already provides; a standalone test environment can install it with
+`python -m pip install aiohttp`. No running ComfyUI server or GPU is needed.
+
+```bash
+python -m unittest discover -s tests -v
+node --test tests/workflow-sync.test.mjs
+```
 
 ---
 
@@ -321,6 +337,25 @@ UI は ComfyUI の言語設定（`Comfy.Locale`）に追従し、無ければブ
 翻訳者向けに `locales/*.json` へも同内容を置いています。言語を追加するには
 `locales/en.json` を複製して翻訳し、`workflow-sync.js` の `LANGS` と `I18N` に
 コードを追加します。
+
+## 復元と再起動
+
+- 復元用のスナップショットはブラウザのタブごとに保持され、そのタブのセッション中に
+  利用できます。後続の同期や別のタブによって置き換わりません。
+- この版で同期メタ情報が保存された後は、ComfyUI の停止中に共有ファイルが編集されても
+  再起動時に検出します。UI ファイルが変わった場合、接続中の画面が実行用グラフを
+  再生成するまで古い API ファイルを無効化します。
+
+## テスト
+
+Python 3.10 以降と Node.js 18 以降を使用します。Python 側の `aiohttp` は ComfyUI に
+含まれます。単独のテスト環境では `python -m pip install aiohttp` で導入してください。
+ComfyUI サーバーの起動や GPU は不要です。
+
+```bash
+python -m unittest discover -s tests -v
+node --test tests/workflow-sync.test.mjs
+```
 
 ## ライセンス
 
